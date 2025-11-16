@@ -1,0 +1,10 @@
+{
+  "type": "forge:add_spawns",
+  "biomes": "#minecraft:is_overworld",
+  "spawners": {
+    "type": "utilitypets:lucas_the_spider",
+    "weight": 3,
+    "minCount": 1,
+    "maxCount": 2
+  }
+}
