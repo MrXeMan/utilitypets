@@ -1,50 +1,140 @@
 package me.mrxeman.utilitypets;
 
+import me.mrxeman.utilitypets.utils.TimeUnits;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.common.ForgeConfigSpec.*;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 // An example config class. This is not required, but it's a good idea to have one to keep your config organized.
 // Demonstrates how to use Forge's config APIs
 @Mod.EventBusSubscriber(modid = Utilitypets.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
-    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
+    private static class Server {
+        public final IntValue furnyChargeTime;
+        public final IntValue furnyCooldown;
+        public final ConfigValue<List<? extends String>> furnyFavoriteItems;
+        public final ConfigValue<? extends String> furnyTurboItem;
+        public final IntValue furnyTurboTimeAdded;
+        public final IntValue furnyTurboMaxTime;
 
-    private static final ForgeConfigSpec.BooleanValue LOG_DIRT_BLOCK = BUILDER.comment("Whether to log the dirt block on common setup").define("logDirtBlock", true);
+        public final ConfigValue<List<? extends String>> lucasFavoriteItems;
 
-    private static final ForgeConfigSpec.IntValue MAGIC_NUMBER = BUILDER.comment("A magic number").defineInRange("magicNumber", 42, 0, Integer.MAX_VALUE);
+        Server(ForgeConfigSpec.Builder builder) {
+            builder
+                    .comment("Config values for Furny Utility Pet.")
+                    .push("furny");
 
-    public static final ForgeConfigSpec.ConfigValue<String> MAGIC_NUMBER_INTRODUCTION = BUILDER.comment("What you want the introduction message to be for the magic number").define("magicNumberIntroduction", "The magic number is... ");
+            furnyChargeTime = builder
+                    .comment("Furny charge time is how long should furny wait until it shoots his fire coal after getting the target.")
+                    .comment("Furny charge time (ticks): ")
+                    .defineInRange("chargeTime", 20, 0, Integer.MAX_VALUE);
 
-    // a list of strings that are treated as resource locations for items
-    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_STRINGS = BUILDER.comment("A list of items to log on common setup.").defineListAllowEmpty("items", List.of("minecraft:iron_ingot"), Config::validateItemName);
+            furnyCooldown = builder
+                    .comment("Furny cooldown is how long should furny wait before next shot.")
+                    .comment("Furny cooldown (ticks): ")
+                    .defineInRange("cooldown", 40,  0, Integer.MAX_VALUE);
 
-    static final ForgeConfigSpec SPEC = BUILDER.build();
+            furnyFavoriteItems = builder
+                    .comment("List of items that Furny will accept for taming.")
+                    .defineListAllowEmpty("favoriteItems", convertItemsToStringList(Items.COAL, Items.CHARCOAL), Config::validateItemName);
 
-    public static boolean logDirtBlock;
-    public static int magicNumber;
-    public static String magicNumberIntroduction;
-    public static Set<Item> items;
+            builder
+                    .comment("Config values for Furny's turbo ability.")
+                    .push("turbo");
 
-    private static boolean validateItemName(final Object obj) {
-        return obj instanceof final String itemName && ForgeRegistries.ITEMS.containsKey(new ResourceLocation(itemName));
+            //noinspection StringTemplateMigration
+            furnyTurboItem = builder
+                    .comment("Item which is used to boost Furny.")
+                    .define("item", "minecraft:" + Items.BLAZE_POWDER, Config::validateItemName);
+
+            furnyTurboTimeAdded = builder
+                    .comment("Amount of time to be added to the turbo time when clicked with the boost item.")
+                    .comment("Turbo time added (ticks): ")
+                    .defineInRange("timeAdded", TimeUnits.SECONDS.toTicks(5), 0, Integer.MAX_VALUE);
+
+            furnyTurboMaxTime = builder
+                    .comment("Max turbo time that can be stacked on Furny.")
+                    .comment("Turbo max time (ticks): ")
+                    .defineInRange("maxTime", TimeUnits.MINUTE.toTicks(1), 0, Integer.MAX_VALUE);
+
+            builder.pop();
+
+            builder.pop();
+
+            builder
+                    .comment("Config values for Lucas The Spider Utility Pet.")
+                    .push("lucas");
+
+            lucasFavoriteItems = builder
+                    .comment("List of items that Lucas The Spider will accept for taming and breeding.")
+                    .defineListAllowEmpty("favoriteItems", convertItemsToStringList(Items.ROTTEN_FLESH), Config::validateItemName);
+
+            builder.pop();
+        }
     }
+
+    static final ForgeConfigSpec serverSpec;
+    private static final Server server;
+    static {
+        final Pair<Server, ForgeConfigSpec> specPair = new ForgeConfigSpec.Builder().configure(Server::new);
+        serverSpec = specPair.getRight();
+        server = specPair.getLeft();
+    }
+
+    public static int furnyChargeTime;
+    public static int furnyCooldown;
+    public static Set<Item> furnyFavoriteItems;
+    public static Item furnyTurboItem;
+    public static int furnyTurboTimeAdded;
+    public static int furnyTurboMaxTime;
+
+    public static Set<Item> lucasFavoriteItems;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
-        logDirtBlock = LOG_DIRT_BLOCK.get();
-        magicNumber = MAGIC_NUMBER.get();
-        magicNumberIntroduction = MAGIC_NUMBER_INTRODUCTION.get();
+        furnyChargeTime = server.furnyChargeTime.get();
+        furnyCooldown = server.furnyCooldown.get();
+        furnyFavoriteItems = convertItemListToSetList(server.furnyFavoriteItems);
+        furnyTurboItem = ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(server.furnyTurboItem.get()));
+        furnyTurboTimeAdded = server.furnyTurboTimeAdded.get();
+        furnyTurboMaxTime = server.furnyTurboMaxTime.get();
 
-        // convert the list of strings into a set of items
-        items = ITEM_STRINGS.get().stream().map(itemName -> ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemName))).collect(Collectors.toSet());
+        lucasFavoriteItems = convertItemListToSetList(server.lucasFavoriteItems);
+        log();
+    }
+
+    static void log() {
+        LOGGER.info("Here are config values for UtilityPets:");
+        LOGGER.info("- Furny Charge Time: {}", furnyChargeTime);
+        LOGGER.info("- Furny Cooldown: {}", furnyCooldown);
+        LOGGER.info("- Furny Favorite Items: {}", furnyFavoriteItems);
+        LOGGER.info("- Lucas Favorite Items: {}", lucasFavoriteItems);
+    }
+
+    private static boolean validateItemName(final Object obj) {
+        return obj instanceof final String itemName && ForgeRegistries.ITEMS.containsKey(ResourceLocation.parse(itemName));
+    }
+
+    private static List<String> convertItemsToStringList(Item... items) {
+        return Arrays.stream(items).map(item -> "minecraft:" + item.toString()).collect(Collectors.toList());
+    }
+
+    private static Set<Item> convertItemListToSetList(ForgeConfigSpec.@NotNull ConfigValue<List<? extends String>> itemList) {
+        return itemList.get().stream().map(itemName -> ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(itemName))).collect(Collectors.toSet());
     }
 }

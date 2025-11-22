@@ -16,5 +16,7 @@ public class ModItemModelProvider extends ItemModelProvider {
     protected void registerModels() {
         assert ModItems.LUCAS_SPAWN_EGG.getId() != null;
         withExistingParent(ModItems.LUCAS_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
+        assert ModItems.FURNY_SPAWN_EGG.getId() != null;
+        withExistingParent(ModItems.FURNY_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
     }
 }

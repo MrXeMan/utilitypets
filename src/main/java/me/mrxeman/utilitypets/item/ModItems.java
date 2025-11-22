@@ -19,6 +19,10 @@ public class ModItems {
             () -> new ForgeSpawnEggItem(ModEntities.LUCAS_THE_SPIDER, 0x616161, 0x959595,
                     new Item.Properties()));
 
+    public static final RegistryObject<Item> FURNY_SPAWN_EGG = ITEMS.register("furny_spawn_egg",
+            () -> new ForgeSpawnEggItem(ModEntities.FURNY, 0x616161, 0x959595,
+                    new Item.Properties()));
+
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
     }

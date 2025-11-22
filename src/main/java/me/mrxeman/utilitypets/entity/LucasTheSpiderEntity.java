@@ -1,5 +1,6 @@
 package me.mrxeman.utilitypets.entity;
 
+import me.mrxeman.utilitypets.Config;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -19,10 +20,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Set;
 
 public class LucasTheSpiderEntity extends BaseEntity {
     private static final EntityDataAccessor<Byte> DATA_FLAGS_ID = SynchedEntityData.defineId(LucasTheSpiderEntity.class, EntityDataSerializers.BYTE);
+    public int stringTime = 1200;
 
     public LucasTheSpiderEntity(EntityType<? extends TamableAnimal> p_21803_, Level p_21804_) {
         super(p_21803_, p_21804_);
@@ -52,26 +57,42 @@ public class LucasTheSpiderEntity extends BaseEntity {
     }
 
     @Override
-    public @NotNull Item getFavoriteItem() {
-        return Items.ROTTEN_FLESH;
-    }
-
-    @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
         this.entityData.define(DATA_FLAGS_ID, (byte)0);
+    }
+
+    @Override
+    public void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
+        super.readAdditionalSaveData(compoundTag);
+        if (compoundTag.contains("stringTime")) {
+            this.stringTime = compoundTag.getInt("stringTime");
+        }
+    }
+
+    @Override
+    public void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
+        super.addAdditionalSaveData(compoundTag);
+        compoundTag.putInt("stringTime", this.stringTime);
     }
 
     public boolean onClimbable() {
         return this.isClimbing();
     }
 
-    public void tick() {
-        super.tick();
+    @Override
+    public void aiStep() {
+        super.aiStep();
         if (!this.level().isClientSide) {
             this.setClimbing(this.horizontalCollision);
+            if (--this.stringTime <= 0) {
+                if (this.random.nextInt(5) == 0) {
+                    this.spawnAtLocation(Items.STRING);
+                    this.gameEvent(GameEvent.ENTITY_PLACE);
+                }
+                this.stringTime = 1200;
+            }
         }
-
     }
 
     public boolean isClimbing() {
@@ -103,5 +124,10 @@ public class LucasTheSpiderEntity extends BaseEntity {
 
     protected SoundEvent getDeathSound() {
         return SoundEvents.SPIDER_DEATH;
+    }
+
+    @Override
+    protected @NotNull Set<Item> getFavoriteItems() {
+        return Config.lucasFavoriteItems;
     }
 }

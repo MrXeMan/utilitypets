@@ -1,5 +1,6 @@
 package me.mrxeman.utilitypets.event;
 
+import me.mrxeman.utilitypets.entity.FurnyEntity;
 import me.mrxeman.utilitypets.entity.LucasTheSpiderEntity;
 import me.mrxeman.utilitypets.entity.ModEntities;
 import net.minecraft.world.damagesource.DamageSource;
@@ -29,12 +30,22 @@ public class ForgeEvents {
         if (attacker instanceof LucasTheSpiderEntity) {
             victim.addEffect(new MobEffectInstance(MobEffects.POISON, 400, 0)); // 20 seconds * 20 ticks
         }
+        if (attacker instanceof FurnyEntity) {
+            victim.setSecondsOnFire(4);
+        }
     }
 
     @SubscribeEvent
     public static void spawnReplacementEvent(@NotNull SpawnPlacementRegisterEvent event) {
         event.register(
                 ModEntities.LUCAS_THE_SPIDER.get(),
+                SpawnPlacements.Type.ON_GROUND,
+                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Mob::checkMobSpawnRules,
+                SpawnPlacementRegisterEvent.Operation.AND
+        );
+        event.register(
+                ModEntities.FURNY.get(),
                 SpawnPlacements.Type.ON_GROUND,
                 Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 Mob::checkMobSpawnRules,

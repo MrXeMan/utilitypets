@@ -1,5 +1,6 @@
 package me.mrxeman.utilitypets.event;
 
+import me.mrxeman.utilitypets.entity.FurnyEntity;
 import me.mrxeman.utilitypets.entity.LucasTheSpiderEntity;
 import me.mrxeman.utilitypets.entity.ModEntities;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
@@ -14,5 +15,6 @@ public class ModEvents {
     @SubscribeEvent
     public static void entityAttributeEvent(@NotNull EntityAttributeCreationEvent event) {
         event.put(ModEntities.LUCAS_THE_SPIDER.get(), LucasTheSpiderEntity.createAttributes().build());
+        event.put(ModEntities.FURNY.get(), FurnyEntity.createAttributes().build());
     }
 }

@@ -19,6 +19,20 @@ public class ModEntities {
                             .sized(1.0f, 0.8f)
                             .build(ResourceLocation.fromNamespaceAndPath(MOD_ID, "lucas_the_spider").toString()));
 
+    public static final RegistryObject<EntityType<FurnyEntity>> FURNY =
+            ENTITY_TYPES.register("furny",
+                    () -> EntityType.Builder.of(FurnyEntity::new, MobCategory.MONSTER)
+                            .sized(1.0f, 1.0f)
+                            .build(ResourceLocation.fromNamespaceAndPath(MOD_ID, "furny").toString()));
+
+    public static final RegistryObject<EntityType<FireCoalEntity>> FIRECOAL =
+            ENTITY_TYPES.register("firecoal",
+                    () -> EntityType.Builder.<FireCoalEntity>of(FireCoalEntity::new, MobCategory.MISC)
+                            .sized(0.33f,  0.33f)
+                            .clientTrackingRange(4)
+                            .updateInterval(10)
+                            .build(ResourceLocation.fromNamespaceAndPath(MOD_ID, "firecoal").toString()));
+
     public static void register(IEventBus eventBus) {
         ENTITY_TYPES.register(eventBus);
     }

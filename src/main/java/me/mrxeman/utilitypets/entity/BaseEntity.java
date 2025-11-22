@@ -10,14 +10,11 @@ import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.*;
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;
-import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -35,11 +32,12 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
+import java.util.Set;
 import java.util.UUID;
 
 public abstract class BaseEntity extends TamableAnimal implements NeutralMob, GeoEntity {
 
-    private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
+    protected final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     private static final EntityDataAccessor<Integer> DATA_REMAINING_ANGER_TIME = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     private static final UniformInt PERSISTENT_ANGER_TIME = TimeUtil.rangeOfSeconds(20, 39);
@@ -82,17 +80,17 @@ public abstract class BaseEntity extends TamableAnimal implements NeutralMob, Ge
         ItemStack itemstack = player.getItemInHand(interactionHand);
         // client side
         if (this.level().isClientSide) {
-            boolean flag = this.isOwnedBy(player) || this.isTame() || itemstack.is(getFavoriteItem()) && !this.isTame() && !this.isAngry();
+            boolean flag = this.isOwnedBy(player) || this.isTame() || getIngredients().test(itemstack) && !this.isTame() && !this.isAngry();
             return flag ? InteractionResult.CONSUME : InteractionResult.PASS;
         } else if (this.isTame()) { // is tamed
             // healing
-            if (itemstack.is(getFavoriteItem()) && this.getHealth() < this.getMaxHealth()) {
+            if (getIngredients().test(itemstack) && this.getHealth() < this.getMaxHealth()) {
                 this.heal(2);
                 this.usePlayerItem(player, interactionHand, itemstack);
                 this.gameEvent(GameEvent.EAT, this);
                 return InteractionResult.SUCCESS;
             } else {
-                if (itemstack.is(getFavoriteItem())) {
+                if (getIngredients().test(itemstack)) {
                     int i = this.getAge();
                     // growing up
                     if (this.isBaby()) {
@@ -122,7 +120,7 @@ public abstract class BaseEntity extends TamableAnimal implements NeutralMob, Ge
                     return InteractionResult.PASS;
                 }
             }
-        } else if (itemstack.is(getFavoriteItem()) && !this.isAngry()) {
+        } else if (getIngredients().test(itemstack) && !this.isAngry()) {
             this.usePlayerItem(player, interactionHand, itemstack);
             if (this.random.nextInt(3) == 0 && !ForgeEventFactory.onAnimalTame(this, player)) {
                 this.tame(player);
@@ -202,7 +200,7 @@ public abstract class BaseEntity extends TamableAnimal implements NeutralMob, Ge
         this.goalSelector.addGoal(1, new FloatGoal(this));
         this.goalSelector.addGoal(2, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(3, new BreedGoal(this, 1.0D));
-        this.goalSelector.addGoal(4, new TemptGoal(this, 1.2D, Ingredient.of(getFavoriteItem()), false));
+        this.goalSelector.addGoal(4, new TemptGoal(this, 1.2D, getIngredients(), false));
         this.goalSelector.addGoal(5, new FollowParentGoal(this, 1.1D));
         this.goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.0D, 10.0F, 2.0F, false));
         this.goalSelector.addGoal(7, new MeleeAttackGoal(this, 1.0D, true));
@@ -213,14 +211,6 @@ public abstract class BaseEntity extends TamableAnimal implements NeutralMob, Ge
         this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
         this.targetSelector.addGoal(3, (new HurtByTargetGoal(this)).setAlertOthers());
         this.targetSelector.addGoal(8, new ResetUniversalAngerTargetGoal<>(this, true));
-    }
-
-    public static AttributeSupplier.@NotNull Builder createAttributes() {
-        return Animal.createMobAttributes()
-                .add(Attributes.MOVEMENT_SPEED, 0.25F)
-                .add(Attributes.MAX_HEALTH, 20.0D)
-                .add(Attributes.ATTACK_DAMAGE, 6.0D)
-                .add(Attributes.ATTACK_SPEED, 1.0D);
     }
 
     public @Nullable PlayState additionalAnimations() {
@@ -234,6 +224,10 @@ public abstract class BaseEntity extends TamableAnimal implements NeutralMob, Ge
 
     public abstract EntityType<? extends BaseEntity> createOffspring();
 
-    public abstract @NotNull Item getFavoriteItem();
+    protected abstract @NotNull Set<Item> getFavoriteItems();
+
+    protected @NotNull Ingredient getIngredients() {
+        return Ingredient.of(getFavoriteItems().stream().map(Item::getDefaultInstance));
+    }
 
 }
