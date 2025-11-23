@@ -2,16 +2,11 @@ package me.mrxeman.utilitypets.event;
 
 import me.mrxeman.utilitypets.entity.FurnyEntity;
 import me.mrxeman.utilitypets.entity.LucasTheSpiderEntity;
-import me.mrxeman.utilitypets.entity.ModEntities;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.SpawnPlacements;
-import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraftforge.event.entity.SpawnPlacementRegisterEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -33,23 +28,5 @@ public class ForgeEvents {
         if (attacker instanceof FurnyEntity) {
             victim.setSecondsOnFire(4);
         }
-    }
-
-    @SubscribeEvent
-    public static void spawnReplacementEvent(@NotNull SpawnPlacementRegisterEvent event) {
-        event.register(
-                ModEntities.LUCAS_THE_SPIDER.get(),
-                SpawnPlacements.Type.ON_GROUND,
-                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Mob::checkMobSpawnRules,
-                SpawnPlacementRegisterEvent.Operation.AND
-        );
-        event.register(
-                ModEntities.FURNY.get(),
-                SpawnPlacements.Type.ON_GROUND,
-                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Mob::checkMobSpawnRules,
-                SpawnPlacementRegisterEvent.Operation.AND
-        );
     }
 }

@@ -76,6 +76,15 @@ public abstract class BaseEntity extends TamableAnimal implements NeutralMob, Ge
     }
 
     @Override
+    public boolean canAttack(@NotNull LivingEntity p_21822_) {
+        if (this.isTame() && p_21822_ instanceof TamableAnimal tamable) {
+            assert this.getOwner() != null;
+            return !tamable.isOwnedBy(this.getOwner());
+        }
+        return super.canAttack(p_21822_);
+    }
+
+    @Override
     public @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand interactionHand) {
         ItemStack itemstack = player.getItemInHand(interactionHand);
         // client side
@@ -133,7 +142,7 @@ public abstract class BaseEntity extends TamableAnimal implements NeutralMob, Ge
             }
             return InteractionResult.SUCCESS;
         } else {
-            return InteractionResult.PASS;
+            return super.mobInteract(player, interactionHand);
         }
     }
 

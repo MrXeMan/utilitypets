@@ -3,20 +3,23 @@ package me.mrxeman.utilitypets.entity;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import me.mrxeman.utilitypets.Config;
 import me.mrxeman.utilitypets.utils.TimeUnits;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.*;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
-import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;
@@ -30,7 +33,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -96,12 +102,12 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
     @Override
     public void tick() {
         super.tick();
+        if (this.getTurboTime() > 0)
+            this.setTurboTime(this.getTurboTime() - 1);
         if (this.level().isClientSide) {
             this.refreshDimensions();
             return;
         }
-        if (this.getTurboTime() > 0)
-            this.setTurboTime(this.getTurboTime() - 1);
         boolean updateRequired = false;
         if (this.isLit()) {
             --this.litTime;
@@ -218,6 +224,7 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
     @Override
     public @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand interactionHand) {
         if (isOwnedBy(player) && (player.getMainHandItem().is(Config.furnyTurboItem) || player.getOffhandItem().is(Config.furnyTurboItem)) && this.getTurboTime() < Config.furnyTurboMaxTime) {
+            this.addParticlesAroundSelf();
             this.addTurboTime(Config.furnyTurboTimeAdded);
             this.usePlayerItem(player, interactionHand, (player.getMainHandItem().is(Config.furnyTurboItem) ? player.getMainHandItem() : player.getOffhandItem()));
             return InteractionResult.sidedSuccess(level().isClientSide);
@@ -241,10 +248,9 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
         this.goalSelector.addGoal(10, new FurnyLookGoal(this));
         this.goalSelector.addGoal(11, new FurnyShootFirecoalGoal(this));
         this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(12, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(15, new RandomLookAroundGoal(this));
         this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
-        this.targetSelector.addGoal(3, (new HurtByTargetGoal(this)).setAlertOthers());
         this.targetSelector.addGoal(8, new ResetUniversalAngerTargetGoal<>(this, true));
     }
 
@@ -263,7 +269,7 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
             this.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.5d);
             this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(4d);
         } else {
-            this.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.5d);
+            this.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.25d);
             this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(2d);
         }
     }
@@ -343,6 +349,12 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
     @Override
     public boolean stillValid(@NotNull Player p_18946_) {
         return this.isChestVehicleStillValid(p_18946_);
+    }
+
+    @Override
+    public void die(@NotNull DamageSource p_21809_) {
+        super.die(p_21809_);
+        this.chestVehicleDestroyed(p_21809_, this.level(), this);
     }
 
     @Override
@@ -453,6 +465,25 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
         return !this.isInSittingPose() ? entityDimensions.scale(1.0f, 1.45f) : entityDimensions;
     }
 
+    protected void addParticlesAroundSelf() {
+        for(int i = 0; i < 5; ++i) {
+            double d0 = this.random.nextGaussian() * 0.02D;
+            double d1 = this.random.nextGaussian() * 0.02D;
+            double d2 = this.random.nextGaussian() * 0.02D;
+            this.level().addParticle(ParticleTypes.HAPPY_VILLAGER, this.getRandomX(1.0D), this.getRandomY(), this.getRandomZ(1.0D), d0, d1, d2);
+        }
+    }
+
+    public static boolean canSpawn(EntityType<? extends Mob> entityType, LevelAccessor levelAccessor, MobSpawnType mobSpawnType, BlockPos blockPos, RandomSource randomSource) {
+        if (!(levelAccessor instanceof ServerLevelAccessor serverLevelAccessor)) {
+            return false;
+        }
+        boolean base = Mob.checkMobSpawnRules(entityType, levelAccessor, mobSpawnType, blockPos, randomSource);
+        boolean isMineshaft = serverLevelAccessor.getLevel().structureManager().getStructureWithPieceAt(blockPos, BuiltinStructures.MINESHAFT).isValid();
+
+        return base && isMineshaft;
+    }
+
     static class FurnyShootFirecoalGoal extends Goal {
         private final FurnyEntity furny;
         public int chargeTime;
@@ -465,7 +496,7 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
 
         @Override
         public boolean canUse() {
-            return this.furny.getTarget() != null;
+            return this.furny.getTarget() != null && this.furny.getTarget().isAlive() && this.furny.hasLineOfSight(this.furny.getTarget());
         }
 
         @Override
@@ -476,6 +507,7 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
         @Override
         public void stop() {
             this.furny.setCharging(false);
+            this.furny.setTarget(null);
         }
 
         @Override
@@ -494,18 +526,12 @@ public class FurnyEntity extends BaseEntity implements ContainerEntity {
                     } else {
                         this.chargeTime++;
                     }
-                    if (this.chargeTime == (totalChargeTime / 2) && !this.furny.isSilent()) {
-                        level.levelEvent(null, 1015, this.furny.blockPosition(), 0);
-                    }
 
-                    if (this.chargeTime == totalChargeTime) {
+                    if (this.chargeTime >= totalChargeTime) {
                         Vec3 vec3 = this.furny.getViewVector(1.0F);
                         double x = target.getX() - (this.furny.getX() + vec3.x * 1.25D);
                         double y = target.getY(0.5D) - (0.5D + this.furny.getY(0.5D));
                         double z = target.getZ() - (this.furny.getZ() + vec3.z * 1.25D);
-                        if (!this.furny.isSilent()) {
-                            level.levelEvent(null, 1016, this.furny.blockPosition(), 0);
-                        }
 
                         FireCoalEntity firecoal = new FireCoalEntity(level, this.furny, x, y, z);
                         firecoal.setPos(this.furny.getX() + vec3.x, this.furny.getY(0.5D) + 0.25D, firecoal.getZ() + vec3.z);

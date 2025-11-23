@@ -3,8 +3,8 @@
   "biomes": "#minecraft:has_structure/mineshaft",
   "spawners": {
     "type": "utilitypets:furny",
-    "weight": 6,
+    "weight": 2000,
     "minCount": 1,
-    "maxCount": 1
+    "maxCount": 10
   }
 }
